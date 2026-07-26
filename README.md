@@ -2,7 +2,7 @@
 
 给 Cursor 换上你自己的壁纸 —— **背景图 + 主题色 + 半透明界面**，一次设置，全局生效。
 
-![展示效果](https://raw.githubusercontent.com/do996icu/zine-skin/main/media/example.png)
+![展示效果](https://gitee.com/do996icu/zine-skin/raw/main/media/example.png)
 
 ## 功能
 
@@ -30,7 +30,7 @@
 
 如果它让你的编辑器更好看了，欢迎扫码打赏，支持我继续更新～
 
-<img src="https://raw.githubusercontent.com/do996icu/zine-skin/main/media/tip.png" width="220" alt="打赏码" />
+<img src="https://gitee.com/do996icu/zine-skin/raw/main/media/tip.png" width="220" alt="打赏码" />
 
 ---
 
