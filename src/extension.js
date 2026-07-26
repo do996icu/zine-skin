@@ -13,6 +13,11 @@ const THEME_LABEL = 'Skin Dark';
 const THEME_FILE = 'skin-dark-color-theme.json';
 const THEME_URI_PATH = '/theme';
 const SETTINGS_URI_PATH = '/settings';
+const LEASE_NAME = 'lease.json';
+const CLEANUP_DELAY_MS = 3500;
+
+/** @type {{ dir: string, leasePath: string, extensionPath: string } | null} */
+let cleanupCtx = null;
 
 function openExtensionSettings(context) {
 	return vscode.commands.executeCommand(
@@ -80,6 +85,110 @@ function samePath(a, b) {
 	return normalize(a) === normalize(b);
 }
 
+function ensureCleanupTools(context) {
+	const dir = context.globalStorageUri.fsPath;
+	fs.mkdirSync(dir, { recursive: true });
+	for (const name of ['patcher.js', 'orphanCleanup.js']) {
+		fs.copyFileSync(path.join(context.extensionPath, 'src', name), path.join(dir, name));
+	}
+	cleanupCtx = {
+		dir,
+		leasePath: path.join(dir, LEASE_NAME),
+		extensionPath: context.extensionPath
+	};
+	return cleanupCtx;
+}
+
+function readLease(leasePath) {
+	try {
+		if (!fs.existsSync(leasePath)) {
+			return null;
+		}
+		const raw = fs.readFileSync(leasePath, 'utf8').replace(/^\uFEFF/, '');
+		return JSON.parse(raw);
+	} catch (_) {
+		return null;
+	}
+}
+
+function writeLease(leasePath, patch) {
+	const prev = readLease(leasePath) || {};
+	const next = {
+		...prev,
+		...patch,
+		ts: Date.now()
+	};
+	fs.mkdirSync(path.dirname(leasePath), { recursive: true });
+	fs.writeFileSync(leasePath, JSON.stringify(next, null, '\t') + '\n', 'utf8');
+	return next;
+}
+
+function clearLease(leasePath) {
+	try {
+		if (leasePath && fs.existsSync(leasePath)) {
+			fs.unlinkSync(leasePath);
+		}
+	} catch (_) {
+		/* ignore */
+	}
+}
+
+/** 禁用 / 卸载后延迟还原；窗口重载时 activate 会取消 pendingCleanup。 */
+function resolveCleanupRunner() {
+	try {
+		const { execSync } = require('child_process');
+		const out = execSync('node -v', {
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+			windowsHide: true,
+			timeout: 3000
+		});
+		if (out && /^v\d+/.test(String(out).trim())) {
+			return { command: 'node', env: { ...process.env } };
+		}
+	} catch (_) {
+		/* fall through */
+	}
+	return {
+		command: process.execPath,
+		env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+	};
+}
+
+function scheduleOrphanCleanup() {
+	if (!cleanupCtx) {
+		return;
+	}
+	const { dir, leasePath, extensionPath } = cleanupCtx;
+	try {
+		const prev = readLease(leasePath) || {};
+		if (!prev.appRoot) {
+			return;
+		}
+		writeLease(leasePath, {
+			...prev,
+			pendingCleanup: true,
+			pendingAt: Date.now(),
+			extensionPath
+		});
+		const { spawn } = require('child_process');
+		const runner = resolveCleanupRunner();
+		const child = spawn(
+			runner.command,
+			[path.join(dir, 'orphanCleanup.js'), leasePath, String(CLEANUP_DELAY_MS)],
+			{
+				detached: true,
+				stdio: 'ignore',
+				windowsHide: true,
+				env: runner.env
+			}
+		);
+		child.unref();
+	} catch (_) {
+		/* ignore */
+	}
+}
+
 async function offerReload(reason, appRoot) {
 	const isRunningInstall = samePath(appRoot, vscode.env.appRoot);
 	if (!isRunningInstall) {
@@ -131,6 +240,19 @@ async function sync(context, { silent = false, reason = '皮肤已更新。' } =
 				config.enabled && needsInjection
 					? patcher.apply(appRoot, config)
 					: patcher.remove(appRoot, config);
+
+			if (cleanupCtx) {
+				if (config.enabled) {
+					writeLease(cleanupCtx.leasePath, {
+						appRoot,
+						fixChecksums: config.fixChecksums !== false,
+						extensionPath: cleanupCtx.extensionPath,
+						pendingCleanup: false
+					});
+				} else {
+					clearLease(cleanupCtx.leasePath);
+				}
+			}
 
 			// 启动时的静默同步：只有真正改写了 html/css 才提示（避免每次启动都弹）
 			const needsReload = result.changed || (!silent && themeChanged);
@@ -210,6 +332,19 @@ function showStatus() {
 function activate(context) {
 	let configTimer;
 
+	ensureCleanupTools(context);
+	// 尽早取消「待清理」，避免窗口重载时被延迟任务误删补丁
+	if (cleanupCtx) {
+		const prev = readLease(cleanupCtx.leasePath);
+		if (prev && prev.appRoot) {
+			writeLease(cleanupCtx.leasePath, {
+				...prev,
+				pendingCleanup: false,
+				extensionPath: context.extensionPath
+			});
+		}
+	}
+
 	const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 	status.text = '$(symbol-color) Theme';
 	status.tooltip = i18n.t('panelTitle');
@@ -267,6 +402,8 @@ function activate(context) {
 	sync(context, { silent: true, reason: '皮肤已重新应用。' });
 }
 
-function deactivate() {}
+function deactivate() {
+	scheduleOrphanCleanup();
+}
 
 module.exports = { activate, deactivate };
