@@ -1,0 +1,17 @@
+.git/**
+.gitignore
+scripts/**
+media/**
+!media/cursor-skin-menu.js
+!media/icon.png
+*.vsix
+node_modules/**
+*.png
+*.jpg
+*.jpeg
+*.webp
+!media/icon.png
+!media/example.png
+!media/tip.png
+使用手册.md
+palette.json

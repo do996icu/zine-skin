@@ -1,0 +1,195 @@
+{
+  "name": "zine-skin",
+  "displayName": "%extension.displayName%",
+  "description": "%extension.description%",
+  "version": "0.3.1",
+  "publisher": "do996",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/do996icu/zine-skin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/do996icu/zine-skin/issues"
+  },
+  "homepage": "https://github.com/do996icu/zine-skin#readme",
+  "keywords": [
+    "zine",
+    "cursor",
+    "theme",
+    "wallpaper",
+    "background",
+    "skin",
+    "customization"
+  ],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Themes",
+    "Other"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "scripts": {
+    "build:theme": "node scripts/build-theme.js",
+    "package": "npm run build:theme && npx --yes @vscode/vsce package --allow-missing-repository"
+  },
+  "contributes": {
+    "themes": [
+      {
+        "label": "Skin Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/skin-dark-color-theme.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "cursorSkin.openThemeSettings",
+        "title": "%command.openThemeSettings%",
+        "category": "Zine Skin"
+      },
+      {
+        "command": "cursorSkin.openSettings",
+        "title": "%command.openSettings%",
+        "category": "Zine Skin"
+      },
+      {
+        "command": "cursorSkin.apply",
+        "title": "%command.apply%",
+        "category": "Zine Skin"
+      },
+      {
+        "command": "cursorSkin.remove",
+        "title": "%command.remove%",
+        "category": "Zine Skin"
+      },
+      {
+        "command": "cursorSkin.pickImage",
+        "title": "%command.pickImage%",
+        "category": "Zine Skin"
+      },
+      {
+        "command": "cursorSkin.pickAccent",
+        "title": "%command.pickAccent%",
+        "category": "Zine Skin"
+      },
+      {
+        "command": "cursorSkin.status",
+        "title": "%command.status%",
+        "category": "Zine Skin"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "cursorSkin.openThemeSettings"
+        },
+        {
+          "command": "cursorSkin.openSettings"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "%config.title%",
+      "properties": {
+        "cursorSkin.enabled": {
+          "type": "boolean",
+          "default": true,
+          "order": 1,
+          "markdownDescription": "%config.enabled%"
+        },
+        "cursorSkin.backgroundImage": {
+          "type": "string",
+          "default": "",
+          "order": 2,
+          "markdownDescription": "%config.backgroundImage%"
+        },
+        "cursorSkin.opacity": {
+          "type": "number",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1,
+          "order": 3,
+          "markdownDescription": "%config.opacity%"
+        },
+        "cursorSkin.blur": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 60,
+          "order": 4,
+          "markdownDescription": "%config.blur%"
+        },
+        "cursorSkin.size": {
+          "type": "string",
+          "default": "cover",
+          "enum": [
+            "cover",
+            "contain",
+            "auto",
+            "100% 100%"
+          ],
+          "order": 5,
+          "markdownDescription": "%config.size%"
+        },
+        "cursorSkin.position": {
+          "type": "string",
+          "default": "center center",
+          "order": 6,
+          "markdownDescription": "%config.position%"
+        },
+        "cursorSkin.accentColor": {
+          "type": "string",
+          "default": "#7C9EF6",
+          "order": 7,
+          "markdownDescription": "%config.accentColor%"
+        },
+        "cursorSkin.backgroundColor": {
+          "type": "string",
+          "default": "#0F1115",
+          "order": 8,
+          "markdownDescription": "%config.backgroundColor%"
+        },
+        "cursorSkin.panelOpacity": {
+          "type": "number",
+          "default": 0.82,
+          "minimum": 0,
+          "maximum": 1,
+          "order": 9,
+          "markdownDescription": "%config.panelOpacity%"
+        },
+        "cursorSkin.editorOpacity": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0,
+          "maximum": 1,
+          "order": 10,
+          "markdownDescription": "%config.editorOpacity%"
+        },
+        "cursorSkin.customCss": {
+          "type": "string",
+          "default": "",
+          "order": 11,
+          "editPresentation": "multiline",
+          "markdownDescription": "%config.customCss%"
+        },
+        "cursorSkin.installPath": {
+          "type": "string",
+          "default": "",
+          "order": 12,
+          "markdownDescription": "%config.installPath%"
+        },
+        "cursorSkin.fixChecksums": {
+          "type": "boolean",
+          "default": true,
+          "order": 13,
+          "markdownDescription": "%config.fixChecksums%"
+        }
+      }
+    }
+  }
+}
