@@ -304,6 +304,8 @@ function buildHtml(webview, nonce) {
   $('clearImage').addEventListener('click', () => {
     $('backgroundImage').value = '';
     refreshPreview();
+    // 清空后立刻保存并应用，避免只清输入框、旧 CSS 里的壁纸仍残留
+    $('apply').click();
   });
   $('apply').addEventListener('click', () => {
     vscode.postMessage({

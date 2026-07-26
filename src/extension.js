@@ -241,6 +241,17 @@ async function sync(context, { silent = false, reason = '皮肤已更新。' } =
 					? patcher.apply(appRoot, config)
 					: patcher.remove(appRoot, config);
 
+			if (result.backgroundMissing) {
+				await vscode.workspace
+					.getConfiguration(SECTION)
+					.update('backgroundImage', '', vscode.ConfigurationTarget.Global);
+				if (!silent) {
+					vscode.window.showWarningMessage(
+						`Zine Skin：背景图文件已不存在，已清除壁纸设置。\n${result.backgroundMissingPath || ''}`
+					);
+				}
+			}
+
 			if (cleanupCtx) {
 				if (config.enabled) {
 					writeLease(cleanupCtx.leasePath, {

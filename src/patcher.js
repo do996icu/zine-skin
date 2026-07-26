@@ -70,7 +70,18 @@ function stripInjection(html) {
 	return next;
 }
 
-function clearStagedBackgrounds(dir) {
+function clearStagedBackgroundImages(dir) {
+	if (!fs.existsSync(dir)) {
+		return;
+	}
+	for (const name of fs.readdirSync(dir)) {
+		if (name.startsWith(`${BG_BASENAME}.`)) {
+			fs.unlinkSync(path.join(dir, name));
+		}
+	}
+}
+
+function clearInjectedAssets(dir) {
 	if (!fs.existsSync(dir)) {
 		return;
 	}
@@ -84,21 +95,23 @@ function clearStagedBackgrounds(dir) {
 /**
  * 本地图：复制到 workbench 目录，并返回 data URI（避免 vscode-file 相对路径加载失败）。
  * https 原样返回。
+ * 空路径 / 本地文件已删除：视为无壁纸并清掉缓存图，不中断整次 apply。
  */
 function resolveBackground(image, workbenchDir) {
 	const value = String(image || '').trim();
 	if (!value) {
-		clearStagedBackgrounds(workbenchDir);
-		return { url: null, staged: null };
+		clearStagedBackgroundImages(workbenchDir);
+		return { url: null, staged: null, missing: false };
 	}
 	if (/^https:/i.test(value) || /^data:/i.test(value)) {
-		return { url: value, staged: null };
+		return { url: value, staged: null, missing: false };
 	}
 	if (/^http:/i.test(value)) {
 		throw new Error('工作台不允许 http:// 图片，请用 https:// 或本地文件。');
 	}
 	if (!fs.existsSync(value)) {
-		throw new Error(`背景图不存在：${value}`);
+		clearStagedBackgroundImages(workbenchDir);
+		return { url: null, staged: null, missing: true, missingPath: value };
 	}
 	let ext = path.extname(value).toLowerCase();
 	if (!MIME_BY_EXT[ext]) {
@@ -126,9 +139,9 @@ function resolveBackground(image, workbenchDir) {
 	const mime = MIME_BY_EXT[ext] || MIME_BY_EXT['.jpg'];
 	const size = incoming.length;
 	if (size <= 1.2 * 1024 * 1024) {
-		return { url: `data:${mime};base64,${incoming.toString('base64')}`, staged: stagedName };
+		return { url: `data:${mime};base64,${incoming.toString('base64')}`, staged: stagedName, missing: false };
 	}
-	return { url: `./${stagedName}`, staged: stagedName };
+	return { url: `./${stagedName}`, staged: stagedName, missing: false };
 }
 
 function hexToRgba(hex, alpha) {
@@ -406,10 +419,11 @@ function apply(appRoot, options) {
 	// 先算好目标内容，再决定要不要写盘，避免每次启动都“假变更”
 	const bg = resolveBackground(options && options.backgroundImage, paths.dir);
 	const css = buildCss({ ...(options || {}), backgroundImageUrl: bg.url });
+	const cssToken = crypto.createHash('sha256').update(css).digest('hex').slice(0, 10);
 
 	const headInjection =
 		`\t\t${START_MARK}` +
-		`<link rel="stylesheet" href="./${CSS_NAME}">` +
+		`<link rel="stylesheet" href="./${CSS_NAME}?v=${cssToken}">` +
 		(menuJsContent ? `<script src="./${MENU_JS_NAME}"></script>` : '') +
 		`${END_MARK}\n`;
 	const bodyInjection = bg.url
@@ -453,6 +467,8 @@ function apply(appRoot, options) {
 				? `data:(${Math.round(bg.url.length / 1024)}KB)`
 				: bg.url
 			: null,
+		backgroundMissing: Boolean(bg.missing),
+		backgroundMissingPath: bg.missingPath || null,
 		staged: bg.staged,
 		paths
 	};
@@ -467,7 +483,7 @@ function remove(appRoot, options) {
 	if (htmlChanged) {
 		fs.writeFileSync(paths.html, clean, 'utf8');
 	}
-	clearStagedBackgrounds(paths.dir);
+	clearInjectedAssets(paths.dir);
 	if (fs.existsSync(paths.backup)) {
 		fs.unlinkSync(paths.backup);
 	}
