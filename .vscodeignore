@@ -14,4 +14,5 @@ node_modules/**
 !media/example.png
 !media/tip.png
 使用手册.md
+docs/**
 palette.json
